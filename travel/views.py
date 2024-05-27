@@ -6,15 +6,15 @@ mainbp = Blueprint('main', __name__)
 
 @mainbp.route('/')
 def index():
-    destinations = db.session.scalars(db.select(Destination)).all()    
+    destinations = db.session.scalars(db.select(Destination)).all()
     return render_template('index.html', destinations=destinations)
 
 @mainbp.route('/search')
 def search():
-    if request.args['search'] and request.args['search'] != "":
-        print(request.args['search'])
-        query = "%" + request.args['search'] + "%"
-        destinations = db.session.scalars(db.select(Destination).where(Destination.description.like(query)))
+    search_query = request.args.get('search')
+    if search_query and search_query.strip():
+        query = "%" + search_query + "%"
+        destinations = db.session.scalars(db.select(Destination).where(Destination.description.like(query))).all()
         return render_template('index.html', destinations=destinations)
     else:
         return redirect(url_for('main.index'))
