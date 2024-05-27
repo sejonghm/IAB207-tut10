@@ -1,4 +1,5 @@
-from flask import Blueprint, render_template, request, redirect, url_for
+from flask import Blueprint, render_template
+from flask_login import login_required, current_user
 from .models import Destination
 from . import db
 
@@ -9,12 +10,8 @@ def index():
     destinations = db.session.scalars(db.select(Destination)).all()
     return render_template('index.html', destinations=destinations)
 
-@mainbp.route('/search')
-def search():
-    search_query = request.args.get('search')
-    if search_query and search_query.strip():
-        query = "%" + search_query + "%"
-        destinations = db.session.scalars(db.select(Destination).where(Destination.description.like(query))).all()
-        return render_template('index.html', destinations=destinations)
-    else:
-        return redirect(url_for('main.index'))
+@mainbp.route('/profile')
+@login_required
+def profile():
+    return render_template('profile.html', name=current_user.name)
+

@@ -18,7 +18,7 @@ def create_app():
     #(it would be better to use an environment variable here)
     app.secret_key = 'somerandomvalue'
 
-    # Configue and initialise DB
+    # Configure and initialise DB
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///traveldb.sqlite'
     db.init_app(app)
 
@@ -46,3 +46,4 @@ def create_app():
     app.register_blueprint(auth.authbp)
 
     return app
+
