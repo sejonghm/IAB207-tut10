@@ -1,66 +1,40 @@
-from flask import Blueprint, render_template, request, redirect, url_for
-from .models import Destination, Comment
+from flask import Blueprint, render_template, redirect, url_for, request, flash
 from .forms import DestinationForm, CommentForm
+from .models import Destination, Comment
 from . import db
-import os
-from werkzeug.utils import secure_filename
+from flask_login import login_required, current_user
 
-destbp = Blueprint('destination', __name__, url_prefix='/destinations')
-
-@destbp.route('/<id>')
-def show(id):
-    destination = db.session.scalar(db.select(Destination).where(Destination.id==id))
-    # create the comment form
-    cform = CommentForm()    
-    return render_template('destinations/show.html', destination=destination, form=cform)
+destbp = Blueprint('destinations', __name__)
 
 @destbp.route('/create', methods=['GET', 'POST'])
+@login_required
 def create():
-  print('Method type: ', request.method)
-  form = DestinationForm()
-  if form.validate_on_submit():
-    # call the function that checks and returns image
-    db_file_path = check_upload_file(form)
-    destination = Destination(name=form.name.data, description=form.description.data, 
-    image=db_file_path, currency=form.currency.data)
-    # add the object to the db session
-    db.session.add(destination)
-    # commit to the database
-    db.session.commit()
-    print('Successfully created new travel destination', 'success')
-    # Always end with redirect when form is valid
-    return redirect(url_for('destination.create'))
-  return render_template('destinations/create.html', form=form)
+    form = DestinationForm()
+    if form.validate_on_submit():
+        new_destination = Destination(
+            name=form.name.data,
+            description=form.description.data,
+            image=form.image.data,
+            currency=form.currency.data
+        )
+        db.session.add(new_destination)
+        db.session.commit()
+        flash('Destination created successfully', 'success')
+        return redirect(url_for('main.index'))
+    return render_template('create_destination.html', form=form)
 
-def check_upload_file(form):
-  # get file data from form  
-  fp = form.image.data
-  filename = fp.filename
-  # get the current path of the module file… store image file relative to this path  
-  BASE_PATH = os.path.dirname(__file__)
-  # upload file location – directory of this file/static/image
-  upload_path = os.path.join(BASE_PATH, 'static/image', secure_filename(filename))
-  # store relative path in DB as image location in HTML is relative
-  db_upload_path = '/static/image/' + secure_filename(filename)
-  # save the file and return the db upload path  
-  fp.save(upload_path)
-  return db_upload_path
-
-@destbp.route('/<id>/comment', methods=['GET', 'POST'])  
-def comment(id):  
-    form = CommentForm()  
-    # get the destination object associated to the page and the comment
-    destination = db.session.scalar(db.select(Destination).where(Destination.id==id))  
-    if form.validate_on_submit():  
-      # read the comment from the form
-      comment = Comment(text=form.text.data, destination=destination) 
-      # here the back-referencing works - comment.destination is set
-      # and the link is created
-      db.session.add(comment) 
-      db.session.commit() 
-
-      # flashing a message which needs to be handled by the html
-      # flash('Your comment has been added', 'success')  
-      print('Your comment has been added', 'success') 
-    # using redirect sends a GET request to destination.show
-    return redirect(url_for('destination.show', id=id))
+@destbp.route('/<destination>/comment', methods=['GET', 'POST'])
+@login_required
+def comment(destination):
+    form = CommentForm()
+    if form.validate_on_submit():
+        new_comment = Comment(
+            text=form.text.data,
+            user=current_user,
+            destination_id=destination
+        )
+        db.session.add(new_comment)
+        db.session.commit()
+        flash('Comment added successfully', 'success')
+        return redirect(url_for('destinations.show', destination=destination))
+    return render_template('add_comment.html', form=form)
